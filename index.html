@@ -4,695 +4,919 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#1a2e1e">
-<title>ЖД Переезд — симулятор</title>
+<title>ЖД Переезд — Симулятор ДСП</title>
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden;width:100%;font-family:'Onest',system-ui,sans-serif;background:#0a1410;color:#e8f0ea;user-select:none}
-#scene{position:fixed;inset:0;overflow:hidden;background:linear-gradient(180deg,#87ceeb 0%,#b0e0e6 30%,#1a3d28 30%,#0f2517 100%)}
-#sceneCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
-
-.hud{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:8px;align-items:flex-start;pointer-events:none;z-index:10}
-.hud-block{background:rgba(10,30,18,.9);backdrop-filter:blur(12px);border:1px solid rgba(80,180,120,.4);border-radius:14px;padding:10px 14px;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,.5)}
-.hud-timer{font-size:22px;font-weight:800;letter-spacing:-1px;color:#4ade80;font-variant-numeric:tabular-nums}
-.hud-timer.warn{color:#fbbf24}
-.hud-timer.danger{color:#f87171;animation:pulse .5s infinite alternate}
-@keyframes pulse{from{opacity:1}to{opacity:.5}}
-.hud-label{font-size:9.5px;text-transform:uppercase;letter-spacing:1.5px;color:#6a8575;font-weight:700;margin-bottom:2px}
-.hud-status{font-size:12.5px;font-weight:600;color:#a8bfb0}
-.hud-right{margin-left:auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
-.hud-lives{font-size:14px;letter-spacing:2px}
-
-.inventory{position:absolute;bottom:calc(90px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;gap:8px;background:rgba(10,30,18,.92);backdrop-filter:blur(12px);border:1px solid rgba(80,180,120,.4);border-radius:18px;padding:8px;z-index:15;box-shadow:0 12px 32px rgba(0,0,0,.6)}
-.inv-item{width:58px;height:58px;border-radius:13px;background:rgba(20,50,32,.7);border:1.5px solid rgba(80,180,120,.3);display:flex;align-items:center;justify-content:center;font-size:27px;cursor:pointer;transition:all .2s;position:relative}
-.inv-item:active{transform:scale(.9)}
-.inv-item.active{background:linear-gradient(135deg,#22c55e,#16a34a);border-color:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.3),0 8px 20px rgba(34,197,94,.5)}
-.inv-label{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:8.5px;color:#6a8575;text-transform:uppercase;letter-spacing:.5px;font-weight:700;white-space:nowrap}
-
+html,body{height:100%;overflow:hidden;width:100%;font-family:'Onest',system-ui,sans-serif;background:#0a1410;color:#e8f0ea;user-select:none;-webkit-user-select:none}
+#game{position:fixed;inset:0;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;top:0;left:0;right:0;padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top,0px));display:flex;gap:8px;align-items:flex-start;pointer-events:none;z-index:10}
+.hb{background:rgba(8,22,14,.92);backdrop-filter:blur(12px);border:1px solid rgba(80,180,120,.35);border-radius:14px;padding:9px 13px;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.hb-l{font-size:9px;text-transform:uppercase;letter-spacing:1.4px;color:#6a8575;font-weight:700;margin-bottom:3px}
+.hb-t{font-size:21px;font-weight:800;color:#4ade80;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1}
+.hb-t.warn{color:#fbbf24}
+.hb-t.danger{color:#f87171;animation:pulse .55s infinite alternate}
+@keyframes pulse{from{opacity:1}to{opacity:.55}}
+.hb-s{font-size:11.5px;font-weight:600;color:#a8bfb0;margin-top:2px}
+.hud-r{margin-left:auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.hb-sm{padding:7px 11px}
+.hb-sm .hb-s{font-size:11px;margin-top:0}
+.lives{font-size:14px;letter-spacing:2px;margin-top:1px}
+.notifs{position:absolute;top:96px;left:12px;right:12px;z-index:8;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.notif{background:rgba(8,22,14,.96);border:1px solid rgba(80,180,120,.4);border-radius:12px;padding:10px 14px;font-size:12.5px;font-weight:600;color:#e8f0ea;animation:notifIn .3s;box-shadow:0 8px 24px rgba(0,0,0,.5);backdrop-filter:blur(8px)}
+.notif.warn{border-color:#f59e0b;background:rgba(50,35,8,.96)}
+.notif.danger{border-color:#ef4444;background:rgba(55,15,15,.96)}
+.notif.ok{border-color:#4ade80;background:rgba(15,45,25,.96)}
+@keyframes notifIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.tools{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;gap:8px;background:rgba(8,22,14,.94);backdrop-filter:blur(12px);border:1px solid rgba(80,180,120,.4);border-radius:18px;padding:8px;z-index:15;box-shadow:0 12px 32px rgba(0,0,0,.6)}
+.tool{width:56px;height:56px;border-radius:13px;background:rgba(20,50,32,.7);border:1.5px solid rgba(80,180,120,.3);display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;transition:transform .15s;position:relative}
+.tool:active{transform:scale(.9)}
+.tool.on{background:linear-gradient(135deg,#22c55e,#16a34a);border-color:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.28),0 8px 20px rgba(34,197,94,.5)}
+.tool-lbl{position:absolute;bottom:-13px;left:50%;transform:translateX(-50%);font-size:8px;color:#6a8575;text-transform:uppercase;letter-spacing:.4px;font-weight:700;white-space:nowrap}
+.skip-btn{position:absolute;top:96px;left:50%;transform:translateX(-50%);padding:12px 22px;border-radius:14px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;font-weight:700;font-size:13px;font-family:inherit;border:none;cursor:pointer;box-shadow:0 10px 28px rgba(59,130,246,.45);z-index:12;display:none}
+.skip-btn.show{display:flex;align-items:center;gap:8px}
+.skip-btn:active{transform:translateX(-50%) scale(.96)}
 .panel{position:fixed;inset:0;background:rgba(4,16,10,.85);backdrop-filter:blur(8px);z-index:100;display:none;align-items:center;justify-content:center;padding:16px}
 .panel.show{display:flex;animation:fadeIn .2s}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-.panel-box{background:#0f2517;border:1.5px solid rgba(80,180,120,.4);border-radius:22px;padding:22px;max-width:440px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.7);max-height:90vh;overflow-y:auto}
-.panel-title{font-size:17px;font-weight:800;color:#e8f0ea;margin-bottom:16px;display:flex;align-items:center;gap:10px;letter-spacing:-.4px}
-.panel-title .close{margin-left:auto;width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(80,180,120,.3);color:#a8bfb0;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.panel-btn{width:100%;padding:14px;border-radius:13px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-weight:700;font-size:14px;border:none;font-family:inherit;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s;box-shadow:0 8px 20px rgba(34,197,94,.3)}
-.panel-btn:active{transform:scale(.97)}
-.panel-btn.red{background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 8px 20px rgba(239,68,68,.3)}
-.panel-btn.amber{background:linear-gradient(135deg,#f59e0b,#b45309);box-shadow:0 8px 20px rgba(245,158,11,.3)}
-.panel-btn.blue{background:linear-gradient(135deg,#3b82f6,#1d4ed8);box-shadow:0 8px 20px rgba(59,130,246,.3)}
-.panel-btn.gray{background:rgba(255,255,255,.08);color:#e8f0ea;border:1px solid rgba(80,180,120,.3);box-shadow:none}
-
-.schedule-list{max-height:340px;overflow-y:auto;margin-bottom:16px}
-.sched-item{display:flex;gap:12px;align-items:center;padding:12px 14px;background:rgba(20,50,32,.5);border-radius:12px;margin-bottom:8px;border:1px solid rgba(80,180,120,.2)}
-.sched-item.next{border-color:#22c55e;background:rgba(34,197,94,.15)}
-.sched-time{font-size:20px;font-weight:800;color:#4ade80;min-width:60px;letter-spacing:-.6px;font-variant-numeric:tabular-nums}
-.sched-info{flex:1;min-width:0}
-.sched-num{font-size:13px;font-weight:700;color:#e8f0ea}
-.sched-title{font-size:11px;color:#a8bfb0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sched-badge{font-size:9.5px;padding:3px 8px;border-radius:6px;background:rgba(34,197,94,.2);color:#4ade80;font-weight:700}
-
-.scroll-anim{position:fixed;inset:0;background:rgba(4,16,10,.95);z-index:200;display:none;align-items:center;justify-content:center;flex-direction:column;gap:20px}
-.scroll-anim.show{display:flex;animation:fadeIn .3s}
-.scroll-train{font-size:64px;animation:trainGo 1.2s ease-in-out infinite}
-@keyframes trainGo{0%,100%{transform:translateX(-30px)}50%{transform:translateX(30px)}}
-.scroll-dots{display:flex;gap:10px}
-.scroll-dot{width:12px;height:12px;border-radius:50%;background:#22c55e;animation:dotPulse 1.4s infinite}
-.scroll-dot:nth-child(2){animation-delay:.2s}
-.scroll-dot:nth-child(3){animation-delay:.4s}
-@keyframes dotPulse{0%,100%{transform:scale(.5);opacity:.3}50%{transform:scale(1);opacity:1}}
-.scroll-text{font-size:16px;font-weight:700;color:#e8f0ea}
-
-.notifications{position:absolute;top:100px;left:12px;right:12px;z-index:8;display:flex;flex-direction:column;gap:6px;pointer-events:none}
-.notif{background:rgba(10,30,18,.95);border:1px solid rgba(80,180,120,.4);border-radius:12px;padding:10px 14px;font-size:12.5px;font-weight:600;color:#e8f0ea;animation:notifIn .3s;box-shadow:0 8px 24px rgba(0,0,0,.5)}
-.notif.warn{border-color:#f59e0b;background:rgba(60,40,10,.95)}
-.notif.danger{border-color:#ef4444;background:rgba(60,20,20,.95)}
-@keyframes notifIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
-
-.touch-controls{position:absolute;bottom:calc(160px + env(safe-area-inset-bottom,0px));left:0;right:0;display:flex;justify-content:space-between;padding:0 16px;pointer-events:none;z-index:14}
-.touch-dpad{display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:5px;pointer-events:auto}
-.touch-btn{background:rgba(10,30,18,.7);border:1px solid rgba(80,180,120,.4);border-radius:11px;color:#a8bfb0;font-size:18px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
-.touch-btn:active{background:rgba(34,197,94,.4);color:#fff;transform:scale(.92)}
-.touch-btn.empty{visibility:hidden}
-.touch-action{width:68px;height:68px;border-radius:50%;background:rgba(34,197,94,.25);border:2px solid rgba(34,197,94,.6);color:#4ade80;font-size:28px;display:flex;align-items:center;justify-content:center;pointer-events:auto;backdrop-filter:blur(8px);align-self:flex-end}
-.touch-action:active{transform:scale(.9);background:rgba(34,197,94,.5)}
-
-.start{position:fixed;inset:0;background:linear-gradient(135deg,#0a1410,#0f2517);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center}
-.start h1{font-size:34px;font-weight:800;letter-spacing:-1.5px;background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
-.start p{color:#a8bfb0;font-size:14px;margin-bottom:8px;max-width:360px;line-height:1.5}
-.start .kbd{font-size:11px;color:#6a8575;margin-bottom:24px}
-.start button{padding:16px 36px;border-radius:16px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-weight:800;font-size:16px;border:none;cursor:pointer;box-shadow:0 16px 40px rgba(34,197,94,.4)}
+.pbox{background:#0f2517;border:1.5px solid rgba(80,180,120,.4);border-radius:22px;padding:22px;max-width:440px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.7);max-height:88vh;overflow-y:auto}
+.p-title{font-size:17px;font-weight:800;color:#e8f0ea;margin-bottom:16px;display:flex;align-items:center;gap:10px;letter-spacing:-.4px}
+.p-close{margin-left:auto;width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(80,180,120,.3);color:#a8bfb0;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.p-btn{width:100%;padding:14px;border-radius:13px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-weight:700;font-size:13.5px;border:none;font-family:inherit;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 20px rgba(34,197,94,.3);transition:transform .12s}
+.p-btn:active{transform:scale(.97)}
+.p-btn.red{background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 8px 20px rgba(239,68,68,.3)}
+.p-btn.amber{background:linear-gradient(135deg,#f59e0b,#b45309);box-shadow:0 8px 20px rgba(245,158,11,.3)}
+.p-btn.blue{background:linear-gradient(135deg,#3b82f6,#1d4ed8);box-shadow:0 8px 20px rgba(59,130,246,.3)}
+.p-btn.gray{background:rgba(255,255,255,.08);color:#e8f0ea;border:1px solid rgba(80,180,120,.3);box-shadow:none}
+.p-btn.dark{background:linear-gradient(135deg,#4b5563,#1f2937);box-shadow:none}
+.p-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.p-info{background:rgba(20,50,32,.5);border:1px solid rgba(80,180,120,.2);border-radius:12px;padding:12px 14px;font-size:12px;color:#a8bfb0;line-height:1.5;margin-bottom:12px}
+.p-info b{color:#4ade80}
+.sched-list{max-height:320px;overflow-y:auto;margin-bottom:14px}
+.sched-it{display:flex;gap:11px;align-items:center;padding:11px 13px;background:rgba(20,50,32,.5);border-radius:12px;margin-bottom:7px;border:1px solid rgba(80,180,120,.2)}
+.sched-it.next{border-color:#22c55e;background:rgba(34,197,94,.15)}
+.sched-it.past{opacity:.45}
+.sched-t{font-size:19px;font-weight:800;color:#4ade80;min-width:56px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.sched-i{flex:1;min-width:0}
+.sched-n{font-size:12.5px;font-weight:700;color:#e8f0ea}
+.sched-tt{font-size:10.5px;color:#a8bfb0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sched-b{font-size:9px;padding:3px 7px;border-radius:6px;background:rgba(34,197,94,.2);color:#4ade80;font-weight:700}
+.start{position:fixed;inset:0;background:linear-gradient(135deg,#0a1410,#0f2517);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+.start h1{font-size:30px;font-weight:800;letter-spacing:-1.3px;background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px}
+.start p{color:#a8bfb0;font-size:13px;margin-bottom:8px;max-width:360px;line-height:1.55}
+.start .kbd{font-size:11px;color:#6a8575;margin-bottom:22px}
+.start button{padding:15px 34px;border-radius:16px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-weight:800;font-size:15px;border:none;cursor:pointer;box-shadow:0 16px 40px rgba(34,197,94,.4);font-family:inherit}
 .start button:active{transform:scale(.97)}
-.start .loading{font-size:12px;color:#6a8575;margin-top:16px;min-height:16px}
-
+.start .load{font-size:11.5px;color:#6a8575;margin-top:14px;min-height:16px}
+.end{position:fixed;inset:0;background:linear-gradient(135deg,#0a1410,#0f2517);z-index:600;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+.end.show{display:flex}
+.end h2{font-size:26px;font-weight:800;color:#e8f0ea;margin-bottom:14px}
+.end .rank{font-size:64px;margin-bottom:10px}
+.end .score{font-size:16px;color:#4ade80;font-weight:700;margin-bottom:6px}
+.end .sub{font-size:12px;color:#a8bfb0;margin-bottom:22px}
+.end button{padding:14px 30px;border-radius:14px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-weight:800;font-size:14px;border:none;font-family:inherit;cursor:pointer;box-shadow:0 14px 34px rgba(34,197,94,.4)}
+.timelapse{position:fixed;inset:0;background:rgba(4,16,10,.88);z-index:400;display:none;align-items:center;justify-content:center;flex-direction:column;gap:20px}
+.timelapse.show{display:flex;animation:fadeIn .25s}
+.tl-train{font-size:56px;animation:tlTrain 1s ease-in-out infinite}
+@keyframes tlTrain{0%,100%{transform:translateX(-40px)}50%{transform:translateX(40px)}}
+.tl-txt{font-size:15px;font-weight:700;color:#e8f0ea}
+.tl-dots{display:flex;gap:9px}
+.tl-dot{width:11px;height:11px;border-radius:50%;background:#3b82f6;animation:dotP .9s infinite}
+.tl-dot:nth-child(2){animation-delay:.15s}
+.tl-dot:nth-child(3){animation-delay:.3s}
+@keyframes dotP{0%,100%{transform:scale(.5);opacity:.3}50%{transform:scale(1);opacity:1}}
 @media(max-width:500px){
-  .inv-item{width:52px;height:52px;font-size:24px}
-  .hud-timer{font-size:19px}
+  .tool{width:50px;height:50px;font-size:23px}
+  .hb-t{font-size:18px}
+  .skip-btn{padding:10px 18px;font-size:12px}
 }
 </style>
 </head>
 <body>
-
+<div id="game">
+  <canvas id="cv"></canvas>
+  <div class="hud">
+    <div class="hb">
+      <div class="hb-l">До поезда</div>
+      <div class="hb-t" id="hudTimer">—:—</div>
+      <div class="hb-s" id="hudStatus">Смена не начата</div>
+    </div>
+    <div class="hud-r">
+      <div class="hb hb-sm"><div class="hb-l">Переезд</div><div class="hb-s" id="hudBarrier">Открыт</div></div>
+      <div class="hb hb-sm"><div class="hb-l">Жизни</div><div class="lives" id="hudLives">❤️❤️❤️</div></div>
+    </div>
+  </div>
+  <div class="notifs" id="notifs"></div>
+  <button class="skip-btn" id="skipBtn" onclick="skipToNext()">⏩ Пропустить интервал</button>
+  <div class="tools">
+    <div class="tool" data-item="red" onclick="selectTool('red')">🔴<span class="tool-lbl">Красный</span></div>
+    <div class="tool" data-item="yellow" onclick="selectTool('yellow')">🟡<span class="tool-lbl">Жёлтый</span></div>
+    <div class="tool" data-item="schedule" onclick="openSchedule()">📋<span class="tool-lbl">Расписание</span></div>
+    <div class="tool" data-item="radio" onclick="openRadio()">📻<span class="tool-lbl">Рация</span></div>
+  </div>
+</div>
+<div class="panel" id="panelBox">
+  <div class="pbox">
+    <div class="p-title">🚦 Пульт ДСП <div class="p-close" onclick="closePanel('panelBox')">✕</div></div>
+    <div class="p-info">Порядок: <b>включить АПС</b> → <b>закрыть шлагбаум</b> → <b>доложить диспетчеру</b> → <b>пропустить поезд</b> → <b>открыть</b>.</div>
+    <div class="p-grid">
+      <button class="p-btn red" onclick="setBarrier(false)">🔒 Закрыть</button>
+      <button class="p-btn" onclick="setBarrier(true)">🔓 Открыть</button>
+    </div>
+    <button class="p-btn amber" onclick="toggleAPS()" id="apsBtn">🔔 Включить АПС</button>
+    <button class="p-btn blue" onclick="toggleSignal()" id="sigBtn">🚦 Светофор: ЗЕЛЁНЫЙ</button>
+    <button class="p-btn" onclick="reportDispatcher()">📻 Доложить</button>
+    <button class="p-btn dark" onclick="soundTifon()">🔊 Тифон</button>
+    <button class="p-btn gray" onclick="closePanel('panelBox')">Закрыть</button>
+  </div>
+</div>
+<div class="panel" id="panelSched">
+  <div class="pbox">
+    <div class="p-title">📋 Расписание <div class="p-close" onclick="closePanel('panelSched')">✕</div></div>
+    <div class="sched-list" id="schedList"></div>
+    <button class="p-btn gray" onclick="closePanel('panelSched')">Закрыть</button>
+  </div>
+</div>
+<div class="panel" id="panelRadio">
+  <div class="pbox">
+    <div class="p-title">📻 Рация <div class="p-close" onclick="closePanel('panelRadio')">✕</div></div>
+    <div class="p-info">Вызывай, если: <b>машина застряла</b>, <b>авария</b>, <b>нужна помощь</b>.</div>
+    <button class="p-btn" onclick="radioCall()">📞 Вызвать</button>
+    <button class="p-btn gray" onclick="closePanel('panelRadio')">Закрыть</button>
+  </div>
+</div>
+<div class="timelapse" id="tl">
+  <div class="tl-train">🚄</div>
+  <div class="tl-dots"><div class="tl-dot"></div><div class="tl-dot"></div><div class="tl-dot"></div></div>
+  <div class="tl-txt">Перемотка к следующему поезду…</div>
+</div>
 <div class="start" id="startScreen">
   <h1>ЖД Переезд</h1>
-  <p>Ты — дежурный на переезде. Следи за расписанием, закрывай шлагбаум вовремя, маши флагами. Помогай машинам, если застряли.</p>
-  <div class="kbd">Управление: стрелки / WASD / тач-кнопки</div>
+  <p>Ты — дежурный по переезду (ДСП). Следи за расписанием, закрывай шлагбаум за 3–4 мин до поезда, маши флагами, помогай машинам.</p>
+  <div class="kbd">Тапай по будке → пульт. Инструменты внизу.</div>
   <button onclick="startGame()">Начать смену</button>
-  <div class="loading" id="startLoading"></div>
+  <div class="load" id="startLoad"></div>
 </div>
-
-<div id="scene">
-  <canvas id="sceneCanvas"></canvas>
-  <div class="hud">
-    <div class="hud-block">
-      <div class="hud-label">До поезда</div>
-      <div class="hud-timer" id="hudTimer">— —:— —</div>
-      <div class="hud-status" id="hudStatus">Смена начинается</div>
-    </div>
-    <div class="hud-right">
-      <div class="hud-block" style="padding:8px 12px">
-        <div class="hud-label">Переезд</div>
-        <div class="hud-status" id="hudBarrier">Открыт</div>
-      </div>
-      <div class="hud-block" style="padding:8px 12px">
-        <div class="hud-label">Жизни</div>
-        <div class="hud-lives" id="hudLives">❤️❤️❤️</div>
-      </div>
-    </div>
-  </div>
-  <div class="notifications" id="notifications"></div>
-  <div class="inventory" id="inventory">
-    <div class="inv-item" data-item="red" onclick="selectItem('red')">🔴<span class="inv-label">Красный</span></div>
-    <div class="inv-item" data-item="yellow" onclick="selectItem('yellow')">🟡<span class="inv-label">Жёлтый</span></div>
-    <div class="inv-item" data-item="schedule" onclick="openSchedule()">📋<span class="inv-label">Расписание</span></div>
-    <div class="inv-item" data-item="radio" onclick="openRadio()">📻<span class="inv-label">Рация</span></div>
-  </div>
-  <div class="touch-controls">
-    <div class="touch-dpad">
-      <div class="touch-btn empty"></div>
-      <div class="touch-btn" data-key="ArrowUp">▲</div>
-      <div class="touch-btn empty"></div>
-      <div class="touch-btn" data-key="ArrowLeft">◀</div>
-      <div class="touch-btn empty"></div>
-      <div class="touch-btn" data-key="ArrowRight">▶</div>
-      <div class="touch-btn empty"></div>
-      <div class="touch-btn" data-key="ArrowDown">▼</div>
-      <div class="touch-btn empty"></div>
-    </div>
-    <div class="touch-action" onclick="interact()">✋</div>
-  </div>
-</div>
-
-<div class="panel" id="boxPanel">
-  <div class="panel-box">
-    <div class="panel-title">🚦 Ящик управления <div class="close" onclick="closePanel('boxPanel')">✕</div></div>
-    <button class="panel-btn" onclick="setBarrier(true)">🔓 Открыть шлагбаум</button>
-    <button class="panel-btn red" onclick="setBarrier(false)">🔒 Закрыть шлагбаум</button>
-    <button class="panel-btn amber" onclick="toggleBariers()">⬇ Барьеры вниз</button>
-    <button class="panel-btn blue" onclick="toggleSignal()">🚨 Светофор + звук</button>
-    <button class="panel-btn gray" onclick="closePanel('boxPanel')">Отмена</button>
-  </div>
-</div>
-
-<div class="panel" id="schedulePanel">
-  <div class="panel-box">
-    <div class="panel-title">📋 Расписание поездов <div class="close" onclick="closePanel('schedulePanel')">✕</div></div>
-    <div class="schedule-list" id="scheduleList"></div>
-    <button class="panel-btn gray" onclick="closePanel('schedulePanel')">Закрыть</button>
-  </div>
-</div>
-
-<div class="panel" id="radioPanel">
-  <div class="panel-box">
-    <div class="panel-title">📻 Рация — диспетчер <div class="close" onclick="closePanel('radioPanel')">✕</div></div>
-    <div style="font-size:13px;color:#a8bfb0;line-height:1.6;margin-bottom:16px">
-      Используй рацию, если:<br>
-      • Машина застряла на переезде<br>
-      • Что-то сломалось<br>
-      • Пожар или авария
-    </div>
-    <button class="panel-btn" onclick="radioCall()">📞 Вызвать диспетчера</button>
-    <button class="panel-btn gray" onclick="closePanel('radioPanel')">Закрыть</button>
-  </div>
-</div>
-
-<div class="scroll-anim" id="scrollAnim">
-  <div class="scroll-train">🚂</div>
-  <div class="scroll-dots"><div class="scroll-dot"></div><div class="scroll-dot"></div><div class="scroll-dot"></div></div>
-  <div class="scroll-text">Загружаем расписание…</div>
+<div class="end" id="endScreen">
+  <div class="rank" id="endRank">🏆</div>
+  <h2 id="endTitle">Смена окончена</h2>
+  <div class="score" id="endScore"></div>
+  <div class="sub" id="endSub"></div>
+  <button onclick="location.reload()">Переиграть</button>
 </div>
 
 <script>
-// ==================== КОНСТАНТЫ ====================
+// ========== КОНСТАНТЫ ==========
 const YANDEX_KEY='43ecbcfe-42c5-4874-85af-4b6b3042c843';
 const CF_WORKER='https://purple-voice-50df.sashurovpelmen.workers.dev/v3.0';
-const STATION_FROM='s2000002';
-const CANVAS=document.getElementById('sceneCanvas');
-const CTX=CANVAS.getContext('2d');
+const STATION='s2000002';
+const CV=document.getElementById('cv');
+const CX=CV.getContext('2d');
+const TOTAL_TRAINS=8;
 
-// ==================== СОСТОЯНИЕ ====================
-const state={
-  running:false,lives:3,score:0,
-  player:{x:600,y:600,w:26,h:38,speed:3.5,dir:'down',floor:'top'},
-  camera:{x:0,y:0},
-  keys:{},
-  barrierClosed:false,signalOn:false,bariersDown:false,
-  trains:[],cars:[],schedule:[],nextTrainIndex:0,
-  selectedItem:null,
-  lastTick:0,worldW:1800,worldH:1200,
+// ========== СОСТОЯНИЕ ==========
+const S={
+  running:false,lives:3,trainCount:0,totalScore:0,errors:0,
+  schedule:[],nextIdx:0,
+  trains:[],cars:[],
+  barrierClosed:false,apsOn:false,signalRed:false,reported:false,
+  selected:null,skipAvail:false,waitingForTrain:false,
+  stuckCar:null,radioUsed:false,
+  lastT:0,worldW:2400,worldH:1200,
+  railY:380,roadY:820,
+  cameraX:0,
   audioCtx:null,
-  world:{topBuildingX:400,topBuildingY:100,topBuildingW:400,topBuildingH:200,
-         bottomY:500,bottomH:300,
-         railY:340,roadY:850},
-  stuckCar:null,radioActive:false
+  bellTimer:0
 };
 
-// ==================== ЗВУК ====================
-function initAudio(){if(!state.audioCtx){try{state.audioCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}}
-function playTone(freq,dur,type,vol){initAudio();const ctx=state.audioCtx;if(!ctx)return;const osc=ctx.createOscillator();const g=ctx.createGain();osc.type=type||'sine';osc.frequency.value=freq;g.gain.value=vol||0.12;osc.connect(g);g.connect(ctx.destination);osc.start();g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);osc.stop(ctx.currentTime+dur)}
-function sTifon(){playTone(440,0.4,'sawtooth',0.18);setTimeout(()=>playTone(330,0.5,'sawtooth',0.18),200)}
-function sBell(){playTone(880,0.15,'square',0.09);setTimeout(()=>playTone(880,0.15,'square',0.09),200);setTimeout(()=>playTone(880,0.15,'square',0.09),400)}
-function sCar(){playTone(220,0.3,'square',0.07)}
-function sBarrier(){playTone(150,0.3,'sawtooth',0.09)}
-function sCrash(){playTone(80,0.8,'sawtooth',0.25)}
+// ========== ЗВУК ==========
+function initAudio(){if(!S.audioCtx){try{S.audioCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}}
+function tone(f,dur,type,vol){initAudio();const ctx=S.audioCtx;if(!ctx)return;const o=ctx.createOscillator();const g=ctx.createGain();o.type=type||'sine';o.frequency.value=f;g.gain.value=vol||0.1;o.connect(g);g.connect(ctx.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);o.stop(ctx.currentTime+dur)}
+function sBell(){tone(880,0.18,'square',0.08);setTimeout(()=>tone(880,0.18,'square',0.08),220)}
+function sTifon(){tone(440,0.5,'sawtooth',0.16);setTimeout(()=>tone(330,0.6,'sawtooth',0.16),260)}
+function sCar(){tone(230,0.28,'square',0.06)}
+function sBarrier(){tone(140,0.35,'sawtooth',0.09)}
+function sCrash(){tone(80,0.9,'sawtooth',0.22)}
+function sOK(){tone(660,0.15,'sine',0.12);setTimeout(()=>tone(880,0.24,'sine',0.12),150)}
+function soundTifon(){sTifon();notify('🔊 Тифон подан','')}
 
-// ==================== УВЕДОМЛЕНИЯ ====================
-function notify(t,type){const box=document.getElementById('notifications');const el=document.createElement('div');el.className='notif '+(type||'');el.textContent=t;box.appendChild(el);setTimeout(()=>{el.style.transition='opacity .3s';el.style.opacity='0';setTimeout(()=>el.remove(),300)},3800)}
+// ========== УВЕДОМЛЕНИЯ ==========
+function notify(text,type){const box=document.getElementById('notifs');const el=document.createElement('div');el.className='notif '+(type||'');el.textContent=text;box.appendChild(el);setTimeout(()=>{el.style.transition='opacity .3s';el.style.opacity='0';setTimeout(()=>el.remove(),300)},4000)}
 
-// ==================== РАСПИСАНИЕ ====================
-async function loadSchedule(){
-  document.getElementById('scrollAnim').classList.add('show');
-  try{
-    const d=new Date();const ymd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    const url=CF_WORKER+'/schedule/?apikey='+YANDEX_KEY+'&station='+STATION_FROM+'&date='+ymd+'&format=json&limit=50&transport_types=suburban&system=yandex&show_systems=all';
-    const res=await fetch(url);
-    const data=await res.json();
-    const now=Date.now();
-    const raw=(data.schedule||[]).map(s=>{const t=s.thread||{};return{num:t.number||'—',title:t.title||'—',time:s.departure||s.arrival||'',transport:(t.transport_subtype&&t.transport_subtype.title)||'Электричка'}}).filter(s=>s.time&&new Date(s.time).getTime()>now-1800000).slice(0,15);
-    if(raw.length===0)throw new Error('EMPTY');
-    state.schedule=raw;
-    return true;
-  }catch(e){
-    // Фолбэк
-    state.schedule=[
-      {num:'6268',title:'Москва — Сергиев Посад',time:new Date(Date.now()+90000).toISOString(),transport:'Электричка'},
-      {num:'6270',title:'Москва — Александров',time:new Date(Date.now()+420000).toISOString(),transport:'Электричка'},
-      {num:'6716',title:'Москва — Красноармейск',time:new Date(Date.now()+780000).toISOString(),transport:'Электричка'},
-      {num:'6272',title:'Москва — Пушкино',time:new Date(Date.now()+1200000).toISOString(),transport:'Электричка'},
-      {num:'6274',title:'Москва — Сергиев Посад',time:new Date(Date.now()+1800000).toISOString(),transport:'Электричка'}
-    ];
-    return true;
-  }finally{setTimeout(()=>document.getElementById('scrollAnim').classList.remove('show'),900)}
-}
+// ========== ПОЕЗДА — ТИПЫ ==========
+// Каждый тип: name, color (основной), accent, carsCount, headStyle ('loco'|'emu'), carLen
+const TRAIN_TYPES=[
+  // Электрички
+  {id:'ed4m',name:'ЭД4М',color:'#1f6b3a',accent:'#0a3d24',len:6,head:'emu',kind:'suburban'},
+  {id:'ep2d',name:'ЭП2Д',color:'#227a4a',accent:'#0d4d2a',len:7,head:'emu',kind:'suburban'},
+  {id:'ivolga',name:'Иволга',color:'#5a3a8a',accent:'#3a2560',len:7,head:'emu',kind:'suburban'},
+  {id:'lasta',name:'Ласточка',color:'#c92a2a',accent:'#7a1010',len:5,head:'emu',kind:'suburban'},
+  // Дальнего следования
+  {id:'firm_yaro',name:'Фирменный «Ярославль»',color:'#1a3a7a',accent:'#0a1e4a',len:9,head:'loco',kind:'long',loco:'#c9a44a'},
+  {id:'firm_volga',name:'Фирменный «Волга»',color:'#7a1a1a',accent:'#4a0e0e',len:9,head:'loco',kind:'long',loco:'#8a1a1a'},
+  {id:'long_blue',name:'Пассажирский',color:'#1a5a8a',accent:'#0d3a5a',len:10,head:'loco',kind:'long',loco:'#1a3a5a'},
+  {id:'long_green',name:'Пассажирский',color:'#2a6a2a',accent:'#15401a',len:8,head:'loco',kind:'long',loco:'#1f4a1f'},
+  {id:'sapsan',name:'Сапсан',color:'#e8e8e8',accent:'#c92a2a',len:10,head:'emu',kind:'fast',special:true},
+  {id:'lasta_fast',name:'Ласточка-экспресс',color:'#c92a2a',accent:'#7a1010',len:5,head:'emu',kind:'fast'},
+  // Грузовые
+  {id:'cargo_tank',name:'Грузовой (цистерны)',color:'#7a5a2a',accent:'#4a3518',len:12,head:'loco',kind:'cargo',loco:'#2a2a3a',cargoColor:'#8a7a3a'},
+  {id:'cargo_hopper',name:'Грузовой (полувагоны)',color:'#4a3a2a',accent:'#2a1a10',len:11,head:'loco',kind:'cargo',loco:'#1a1a2a',cargoColor:'#5a4a3a'},
+  // Одиночный локомотив (резерв)
+  {id:'loco_solo',name:'Локомотив (резерв)',color:'#2a3a5a',accent:'#1a2a3a',len:0,head:'loco',kind:'reserve',loco:'#1e3a7a',special:true},
+  // Сплотка (2-3 локомотива)
+  {id:'splo',name:'Сплотка локомотивов',color:'#2a3a5a',accent:'#1a2a3a',len:0,head:'loco',kind:'reserve',loco:'#1e3a7a',splo:true,special:true}
+];
 
-// ==================== СПАВН ====================
-function spawnTrain(){
-  if(state.nextTrainIndex>=state.schedule.length)state.nextTrainIndex=0;
-  const s=state.schedule[state.nextTrainIndex];
-  const t=new Date(s.time).getTime();
-  const now=Date.now();
-  const real=t>now?t:now+90000+Math.random()*120000;
-  // случайный тип события
-  const events=['normal','normal','normal','normal','delay','cancel','stuck'];
-  const ev=events[Math.floor(Math.random()*events.length)];
-  state.trains.push({
-    num:s.num,title:s.title,transport:s.transport,
-    arrivalTime:real,x:2200,y:state.world.railY,
-    speed:1.4,state:'approaching',
-    event:ev,delay:ev==='delay'?Math.floor(5+Math.random()*10):0,
-    notified:false,passed:false
+// Расписание поездов в смену — 8 штук, микс типов
+function generateSchedule(){
+  const base=Date.now()+180000; // первый через 3 минуты
+  const out=[];
+  // Гарантированно разные типы
+  const picks=[
+    TRAIN_TYPES[0],  // ЭД4М
+    TRAIN_TYPES[4],  // Фирменный Ярославль
+    TRAIN_TYPES[2],  // Иволга
+    TRAIN_TYPES[12], // Локомотив резервом
+    TRAIN_TYPES[10], // Грузовой цистерны
+    TRAIN_TYPES[3],  // Ласточка
+    TRAIN_TYPES[13], // Сплотка
+    TRAIN_TYPES[8]   // Сапсан
+  ];
+  picks.forEach((t,i)=>{
+    const tOffset=base+i*300000; // каждые 5 минут
+    out.push({
+      type:t,
+      time:tOffset,
+      num:generateNum(t),
+      title:t.name+' — Москва Ярославская',
+      passed:false,
+      spawned:false
+    });
   });
-  state.nextTrainIndex++;
+  return out;
+}
+function generateNum(t){
+  if(t.kind==='suburban')return String(6000+Math.floor(Math.random()*3000));
+  if(t.kind==='long')return String(1+Math.floor(Math.random()*200));
+  if(t.kind==='fast')return t.id==='sapsan'?'САПСАН':String(700+Math.floor(Math.random()*100));
+  if(t.kind==='cargo')return String(2000+Math.floor(Math.random()*3000));
+  if(t.kind==='reserve')return String(1000+Math.floor(Math.random()*500));
+  return String(1000+Math.floor(Math.random()*9999));
 }
 
-// ==================== СТАРТ ====================
-async function startGame(){
+// ========== ГЕНЕРАЦИЯ ВАГОНОВ ПОЕЗДА ==========
+function buildTrainCars(t,startX){
+  // Возвращает массив вагонов и общую длину
+  const cars=[];
+  const CAR_LEN=90; // длина одного вагона в пикселях
+  const GAP=6;
+  let x=startX;
+  if(t.splo){
+    // Сплотка — 2-3 локомотива
+    const cnt=2+Math.floor(Math.random()*2);
+    for(let i=0;i<cnt;i++){
+      cars.push({kind:'loco',x:x,color:t.loco||t.color,len:CAR_LEN});
+      x-=CAR_LEN+GAP;
+    }
+  }else if(t.len===0){
+    // Одиночный локомотив
+    cars.push({kind:'loco',x:x,color:t.loco||t.color,len:CAR_LEN});
+    x-=CAR_LEN+GAP;
+  }else if(t.head==='loco'){
+    // Локомотив + вагоны
+    cars.push({kind:'loco',x:x,color:t.loco||'#2a3a5a',len:CAR_LEN});
+    x-=CAR_LEN+GAP;
+    for(let i=0;i<t.len;i++){
+      const cargo=t.kind==='cargo';
+      cars.push({kind:cargo?'cargo':'wagon',x:x,color:cargo?(t.cargoColor||'#5a4a3a'):t.color,len:CAR_LEN,accent:t.accent});
+      x-=CAR_LEN+GAP;
+    }
+  }else{
+    // ЭМУ (электричка) — все вагоны одинаковые, головной и хвостовой со «стеклом»
+    for(let i=0;i<t.len;i++){
+      const head=(i===0);
+      const tail=(i===t.len-1);
+      cars.push({kind:'emu',x:x,color:t.color,len:CAR_LEN,accent:t.accent,head:head,tail:tail});
+      x-=CAR_LEN+GAP;
+    }
+  }
+  return cars;
+}
+
+// ========== СТАРТ ==========
+function startGame(){
   document.getElementById('startScreen').style.display='none';
   initAudio();
-  resizeCanvas();
-  await loadSchedule();
-  state.running=true;
-  state.player.x=600;state.player.y=600;
-  spawnTrain();
-  notify('Смена началась','');
-  document.getElementById('hudStatus').textContent='Работаем';
-  requestAnimationFrame(gameLoop);
+  resize();
+  S.running=true;
+  S.lives=3;S.trainCount=0;S.totalScore=0;S.errors=0;
+  S.schedule=generateSchedule();
+  S.nextIdx=0;
+  S.trains=[];
+  S.cars=[];
+  S.barrierClosed=false;S.apsOn=false;S.signalRed=false;S.reported=false;
+  S.stuckCar=null;S.skipAvail=false;S.waitingForTrain=true;
+  updateHud();
+  spawnNextTrain();
+  requestAnimationFrame(loop);
 }
 
-function resizeCanvas(){CANVAS.width=window.innerWidth;CANVAS.height=window.innerHeight}
-window.addEventListener('resize',resizeCanvas);
+function resize(){CV.width=window.innerWidth;CV.height=window.innerHeight}
+window.addEventListener('resize',resize);
 
-// ==================== ЦИКЛ ====================
-function gameLoop(ts){
-  if(!state.running)return;
-  if(!state.lastTick)state.lastTick=ts;
-  const dt=Math.min((ts-state.lastTick)/16.67,3);
-  state.lastTick=ts;
+// ========== СПАВН ПОЕЗДА ==========
+function spawnNextTrain(){
+  if(S.nextIdx>=S.schedule.length){
+    // Смена окончена успешно
+    endGame(true);
+    return;
+  }
+  const item=S.schedule[S.nextIdx];
+  // Спавним поезд за 2 минуты до прихода (он подъезжает)
+  const now=Date.now();
+  const timeLeft=item.time-now;
+  if(timeLeft>60000){
+    // Ещё рано — ждём
+    setTimeout(()=>{if(S.running)spawnNextTrain()},Math.max(500,timeLeft-60000));
+    return;
+  }
+  const cars=buildTrainCars(item.type, 2600);
+  const train={
+    type:item.type,
+    num:item.num,
+    title:item.title,
+    arrivalTime:item.time,
+    cars:cars,
+    speed:0, // стоит
+    state:'waiting', // waiting → moving → passed
+    brakеd:false,
+    crashed:false,
+    reported:false,
+    distance: 2600
+  };
+  S.trains.push(train);
+  S.waitingForTrain=false;
+  notify('🚂 Приближается: '+item.num+' — '+item.type.name,'warn');
+}
+
+// ========== ЦИКЛ ==========
+function loop(t){
+  if(!S.running)return;
+  if(!S.lastT)S.lastT=t;
+  const dt=Math.min((t-S.lastT)/16.67,3);
+  S.lastT=t;
   update(dt);
   render();
-  requestAnimationFrame(gameLoop);
+  requestAnimationFrame(loop);
 }
 
 function update(dt){
-  const p=state.player;
-  let dx=0,dy=0;
-  if(state.keys['ArrowLeft']||state.keys['a']||state.keys['A']){dx-=1;p.dir='left'}
-  if(state.keys['ArrowRight']||state.keys['d']||state.keys['D']){dx+=1;p.dir='right'}
-  if(state.keys['ArrowUp']||state.keys['w']||state.keys['W']){dy-=1;p.dir='up'}
-  if(state.keys['ArrowDown']||state.keys['s']||state.keys['S']){dy+=1;p.dir='down'}
-  const len=Math.hypot(dx,dy)||1;
-  p.x+=(dx/len)*p.speed*dt;
-  p.y+=(dy/len)*p.speed*dt;
-  // границы
-  p.x=Math.max(30,Math.min(state.worldW-p.w-30,p.x));
-  p.y=Math.max(30,Math.min(state.worldH-p.h-30,p.y));
-
-  // камера
-  state.camera.x=p.x-CANVAS.width/2;
-  state.camera.y=p.y-CANVAS.height/2;
-  state.camera.x=Math.max(0,Math.min(state.worldW-CANVAS.width,state.camera.x));
-  state.camera.y=Math.max(0,Math.min(state.worldH-CANVAS.height,state.camera.y));
-
-  // поезда
-  state.trains.forEach(t=>{
-    const left=t.arrivalTime-Date.now()-(t.delay*60000);
-    if(t.event==='cancel'){
-      if(!t.notified){
-        t.notified=true;
-        notify('❌ Поезд '+t.num+' отменён','danger');
-        t.passed=true;
-        setTimeout(()=>{if(state.running){state.trains=state.trains.filter(x=>x!==t);spawnTrain()}},2000);
+  const now=Date.now();
+  // АПС звонок пока включён
+  if(S.apsOn){
+    S.bellTimer-=dt;
+    if(S.bellTimer<=0){sBell();S.bellTimer=35}
+  }
+  // Поезда
+  S.trains.forEach(tr=>{
+    const left=tr.arrivalTime-now;
+    // Двигается: только если шлагбаум закрыт и время пришло
+    if(tr.state==='waiting'){
+      // Если приблизилось время и шлагбаум НЕ закрыт — аварийный сигнал
+      if(left<30000&&left>0&&!S.barrierClosed&&!tr.crashed){
+        // предупреждение
       }
-      return;
+      if(left<5000&&!S.barrierClosed&&!tr.crashed){
+        tr.crashed=true;
+        loseLife('Поезд прошёл на открытый переезд!');
+      }
+      if(left<=5000&&S.barrierClosed){
+        tr.state='moving';
+      }
     }
-    if(t.state==='approaching'){
-      if(left<60000&&left>0&&!t.notified){t.notified=true;notify('🚂 Поезд '+t.num+' через '+(t.delay?('('+t.delay+' мин задержка) '):'')+Math.floor(left/60000)+' мин',left<120000?'warn':'')}
-      if(left<30000){t.state='braking';if(!t.braked){t.braked=true;sTifon();notify('Поезд тормозит!','warn')}}
-      if(state.barrierClosed&&left<5000){t.state='moving'}
-      if(!state.barrierClosed&&left<5000&&left>0&&!t.crash){t.crash=true;loseLife('Поезд на переезде! Шлагбаум открыт!')}
-    }else if(t.state==='braking'){
-      t.x-=t.speed*0.4*dt;
-    }else if(t.state==='moving'){
-      t.x-=t.speed*1.6*dt;
-      if(t.x<-400)t.passed=true;
+    if(tr.state==='moving'){
+      // Двигаем все вагоны влево
+      const spd=6*dt;
+      tr.cars.forEach(c=>c.x-=spd);
+      tr.distance=tr.cars[tr.cars.length-1].x;
+      // Уехал?
+      if(tr.cars[0].x<-300){
+        tr.state='passed';
+      }
     }
-    // рисуем движение всегда
-    if(t.state==='approaching')t.x-=t.speed*0.3*dt;
   });
-  state.trains=state.trains.filter(t=>!t.passed);
-  if(state.trains.length===0){setTimeout(()=>{if(state.running)spawnTrain()},30000)}
-
-  // машины
-  updateCars(dt);
-
-  // HUD
-  updateHud();
-
-  // машина застряла
-  if(state.stuckCar&&!state.radioActive){
-    const t=state.trains.find(t=>t.state==='approaching'||t.state==='braking');
-    if(t&&t.arrivalTime-Date.now()<30000&&state.barrierClosed){
-      // ничего — игрок должен вызвать диспетчера
+  // Удаляем проехавшие + переход к следующему
+  const before=S.trains.length;
+  S.trains=S.trains.filter(t=>t.state!=='passed');
+  if(before>S.trains.length){
+    const finished=S.trains.length===0;
+    if(finished){
+      S.trainCount++;
+      S.totalScore+=100;
+      S.nextIdx++;
+      // Проверка: смена окончена?
+      if(S.nextIdx>=S.schedule.length){
+        setTimeout(()=>{if(S.running)endGame(true)},1500);
+      }else{
+        S.skipAvail=true;
+        updateHud();
+        notify('✅ Поезд пропущен. Следующий через '+Math.round((S.schedule[S.nextIdx].time-Date.now())/60000)+' мин','ok');
+        // Автоспавн следующего
+        setTimeout(()=>{if(S.running){S.skipAvail=false;spawnNextTrain()}},4000);
+      }
     }
   }
+  // Машины
+  updateCars(dt);
+  // HUD
+  updateHud();
 }
 
 function updateCars(dt){
-  if(Math.random()<0.008&&state.cars.length<8){
-    state.cars.push({x:1500+Math.random()*400,y:state.world.roadY,speed:1.8,waiting:false,hornTimer:0,stuck:false});
+  if(S.cars.length<6&&Math.random()<0.01){
+    const fromLeft=Math.random()<0.5;
+    S.cars.push({
+      x:fromLeft?-80:2600,
+      y:S.roadY,
+      vx:fromLeft?2.2:-2.2,
+      waiting:false,
+      hornTimer:0,
+      stuck:false
+    });
   }
-  state.cars.forEach(c=>{
-    if(state.barrierClosed||state.bariersDown){
-      if(!c.waiting&&c.stuck){
-        // застряла
-      }
-      c.waiting=true;
+  S.cars.forEach(c=>{
+    const blocked=S.barrierClosed;
+    const atBarrier=(c.x>720&&c.x<900);
+    if(blocked&&!c.stuck){
+      if(c.vx>0&&c.x>700&&c.x<780){c.waiting=true;c.vx=0}
+      else if(c.vx<0&&c.x<900&&c.x>820){c.waiting=true;c.vx=0}
+    }else if(blocked&&c.stuck){
+      c.waiting=true;c.vx=0;
       c.hornTimer-=dt;
-      if(c.hornTimer<=0&&!c.stuck){sCar();c.hornTimer=140}
+      if(c.hornTimer<=0){sCar();c.hornTimer=180}
     }else{
-      c.waiting=false;c.x-=c.speed*dt;
+      c.waiting=false;
     }
+    if(!c.waiting)c.x+=c.vx*dt;
   });
-  state.cars=state.cars.filter(c=>c.x>-200);
-  // случайно застревает одна машина
-  if(!state.stuckCar&&Math.random()<0.0008&&state.cars.length>0){
-    const c=state.cars[Math.floor(Math.random()*state.cars.length)];
-    if(c.x>state.world.topBuildingX-100&&c.x<state.world.topBuildingX+state.world.topBuildingW+100){
-      c.stuck=true;state.stuckCar=c;notify('⚠️ Машина застряла на переезде!','danger');
-    }
+  S.cars=S.cars.filter(c=>c.x>-200&&c.x<2800);
+  // Случайная застревание (редко)
+  if(!S.stuckCar&&Math.random()<0.0012&&S.cars.length>0&&S.barrierClosed){
+    const c=S.cars.find(x=>x.x>720&&x.x<880);
+    if(c){c.stuck=true;S.stuckCar=c;notify('⚠️ Машина застряла на переезде!','danger')}
   }
 }
 
+// ========== HUD ==========
 function updateHud(){
-  const t=state.trains[0];
-  const timer=document.getElementById('hudTimer');
-  if(t){
-    const left=t.arrivalTime-Date.now()-(t.delay*60000);
-    if(left>0){
-      const m=Math.floor(left/60000);const s=Math.floor((left%60000)/1000);
-      timer.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
-      timer.className='hud-timer'+(left<60000?' danger':left<120000?' warn':'');
-    }else{timer.textContent='—:—';timer.className='hud-timer'}
-    document.getElementById('hudStatus').textContent='Поезд '+t.num;
-  }else{timer.textContent='—:—';timer.className='hud-timer';document.getElementById('hudStatus').textContent='Ждём поезд'}
-  document.getElementById('hudBarrier').textContent=state.barrierClosed?'Закрыт':'Открыт';
-  document.getElementById('hudBarrier').style.color=state.barrierClosed?'#f87171':'#4ade80';
-  document.getElementById('hudLives').textContent='❤️'.repeat(state.lives)+'🖤'.repeat(Math.max(0,3-state.lives));
+  const t=$('hudTimer');
+  const next=S.schedule[S.nextIdx];
+  const active=S.trains[0];
+  let timeLeft=null;
+  if(active)timeLeft=active.arrivalTime-Date.now();
+  else if(next)timeLeft=next.time-Date.now();
+  if(timeLeft!==null&&timeLeft>0){
+    const m=Math.floor(timeLeft/60000);
+    const s=Math.floor((timeLeft%60000)/1000);
+    t.textContent=(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+    t.className='hb-t'+(timeLeft<60000?' danger':timeLeft<180000?' warn':'');
+  }else{
+    t.textContent='—:—';t.className='hb-t';
+  }
+  const st=active?('Поезд '+active.num+' — '+active.type.name):(next?'Следующий: '+next.num:'Смена завершена');
+  $('hudStatus').textContent=st;
+  $('hudBarrier').textContent=S.barrierClosed?'Закрыт':'Открыт';
+  $('hudBarrier').style.color=S.barrierClosed?'#f87171':'#4ade80';
+  $('hudLives').textContent='❤️'.repeat(Math.max(0,S.lives))+'🖤'.repeat(Math.max(0,3-S.lives));
 }
+function $(id){return document.getElementById(id)}
 
-// ==================== ДЕЙСТВИЯ ====================
+// ========== ПАНЕЛЬ ==========
+function openPanel(id){$(id).classList.add('show')}
+function closePanel(id){$(id).classList.remove('show')}
 function setBarrier(closed){
-  state.barrierClosed=closed;
+  S.barrierClosed=closed;
   sBarrier();
-  notify(closed?'🔒 Шлагбаум закрыт':'🔓 Шлагбаум открыт','');
-  closePanel('boxPanel');
+  if(closed){notify('🔒 Шлагбаум закрыт','')}
+  else{notify('🔓 Шлагбаум открыт','')}
+  closePanel('panelBox');
 }
-function toggleBariers(){
-  state.bariersDown=!state.bariersDown;
-  notify(state.bariersDown?'⬇ Барьеры опущены':'⬆ Барьеры подняты','');
+function toggleAPS(){
+  S.apsOn=!S.apsOn;
+  $('apsBtn').textContent=S.apsOn?'🔔 Выключить АПС':'🔔 Включить АПС';
+  $('apsBtn').className='p-btn '+(S.apsOn?'red':'amber');
+  if(S.apsOn)sBell();
+  notify(S.apsOn?'🔔 АПС включён':'🔕 АПС выключен','');
 }
 function toggleSignal(){
-  state.signalOn=!state.signalOn;
-  if(state.signalOn){sBell();setTimeout(sBell,500)}
-  notify(state.signalOn?'🚨 Светофор и звук включены':'Светофор выключен','');
+  S.signalRed=!S.signalRed;
+  $('sigBtn').textContent='🚦 Светофор: '+(S.signalRed?'КРАСНЫЙ':'ЗЕЛЁНЫЙ');
+  $('sigBtn').className='p-btn '+(S.signalRed?'red':'blue');
+  notify(S.signalRed?'🚦 Красный поездам':'🚦 Зелёный поездам','');
 }
-function selectItem(item){
-  if(item==='red'||item==='yellow'){
-    state.selectedItem=state.selectedItem===item?null:item;
-    document.querySelectorAll('.inv-item').forEach(el=>el.classList.toggle('active',el.dataset.item===state.selectedItem));
+function reportDispatcher(){
+  S.reported=true;
+  sOK();
+  notify('📻 Диспетчер: «Принял»','ok');
+  closePanel('panelBox');
+}
+function selectTool(item){
+  S.selected=(S.selected===item?null:item);
+  document.querySelectorAll('.tool').forEach(el=>{
+    if(el.dataset.item)el.classList.toggle('on',el.dataset.item===S.selected);
+  });
+  if(item==='schedule'){openSchedule();S.selected=null;document.querySelectorAll('.tool').forEach(el=>el.classList.remove('on'))}
+  else if(item==='radio'){openRadio();S.selected=null;document.querySelectorAll('.tool').forEach(el=>el.classList.remove('on'))}
+}
+function openSchedule(){
+  const box=$('schedList');
+  const now=Date.now();
+  let html='';
+  S.schedule.forEach((s,i)=>{
+    const d=new Date(s.time);
+    const tm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    const cls=(i===S.nextIdx?'next':'')+(s.passed?' past':'');
+    html+='<div class="sched-it '+cls+'"><div class="sched-t">'+tm+'</div><div class="sched-i"><div class="sched-n">'+s.num+' · '+s.type.name+'</div><div class="sched-tt">'+s.title+'</div></div><div class="sched-b">'+(i===S.nextIdx?'СЛЕД':(s.passed?'✓':'ожид'))+'</div></div>';
+  });
+  box.innerHTML=html;
+  openPanel('panelSched');
+}
+function openRadio(){openPanel('panelRadio')}
+function radioCall(){
+  if(S.stuckCar){
+    notify('📻 Диспетчер: «Помощь едет»','ok');
+    sOK();
+    setTimeout(()=>{
+      if(S.stuckCar){S.stuckCar.stuck=false;S.stuckCar.waiting=false;S.stuckCar=null}
+      notify('✅ Машина убрана с переезда','ok');
+    },2500);
+  }else{
+    notify('📻 Диспетчер: «На линии тихо»','');
   }
+  closePanel('panelRadio');
 }
 
-function interact(){
-  const p=state.player;
-  // если рядом ящик — открыть панель
-  const box=state.world;
-  if(Math.abs(p.x-(box.topBuildingX+box.topBuildingW/2))<80&&Math.abs(p.y-box.topBuildingY)<80){
-    openPanel('boxPanel');return;
-  }
-  // если рядом машина-застрявшая и есть красный флаг
-  if(state.stuckCar&&state.selectedItem==='red'){
-    const c=state.stuckCar;
-    if(Math.abs(p.x-c.x)<120&&Math.abs(p.y-c.y)<120){
-      notify('Машину выталкивают…','warn');
-      setTimeout(()=>{
-        state.stuckCar.stuck=false;state.stuckCar.waiting=false;state.stuckCar=null;
-        notify('✅ Машину вытолкнули','');
-        soundSuccess();
-      },1500);
-    }
-  }
-  // рация
-  if(state.stuckCar&&!state.radioActive){
-    // ничего
-  }
+// ========== ПЕРЕМОТКА ==========
+function skipToNext(){
+  if(!S.skipAvail)return;
+  if(S.nextIdx>=S.schedule.length)return;
+  $('skipBtn').classList.remove('show');
+  $('tl').classList.add('show');
+  setTimeout(()=>{
+    const next=S.schedule[S.nextIdx];
+    const t=next.time-4*60*1000;
+    // сдвигаем время всех оставшихся поездов
+    const shift=t-Date.now();
+    for(let i=S.nextIdx;i<S.schedule.length;i++)S.schedule[i].time+=shift;
+    $('tl').classList.remove('show');
+    S.skipAvail=false;
+    spawnNextTrain();
+  },1400);
 }
 
-function soundSuccess(){playTone(660,0.15,'sine',0.15);setTimeout(()=>playTone(880,0.25,'sine',0.15),160)}
-
+// ========== ЖИЗНИ / КОНЕЦ ==========
 function loseLife(reason){
-  state.lives--;
+  S.lives--;S.errors++;
   sCrash();
   notify('💥 '+reason,'danger');
-  if(state.lives<=0){
-    state.running=false;
-    setTimeout(()=>{
-      document.getElementById('startScreen').style.display='flex';
-      document.getElementById('startScreen').innerHTML='<h1>Смена окончена</h1><p>Ошибок: 3. Попробуй снова.</p><button onclick="location.reload()">Переиграть</button>';
-    },1500);
+  updateHud();
+  if(S.lives<=0){
+    setTimeout(()=>endGame(false),1500);
   }
 }
-
-// ==================== ПАНЕЛИ ====================
-function openPanel(id){document.getElementById(id).classList.add('show')}
-function closePanel(id){document.getElementById(id).classList.remove('show')}
-function openSchedule(){
-  const list=document.getElementById('scheduleList');
-  if(state.schedule.length===0){list.innerHTML='<div style="color:#6a8575;padding:14px;text-align:center">Расписание пусто</div>';openPanel('schedulePanel');return}
-  list.innerHTML=state.schedule.map((s,i)=>{
-    const t=new Date(s.time);
-    const tm=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');
-    return '<div class="sched-item'+(i===0?' next':'')+'"><div class="sched-time">'+tm+'</div><div class="sched-info"><div class="sched-num">'+s.num+'</div><div class="sched-title">'+s.title+'</div></div><div class="sched-badge">'+s.transport+'</div></div>';
-  }).join('');
-  openPanel('schedulePanel');
-}
-function openRadio(){openPanel('radioPanel')}
-function radioCall(){
-  if(state.stuckCar){
-    state.radioActive=true;
-    notify('📻 Диспетчер: «Машину толкаем, ждите»','');
-    setTimeout(()=>{
-      state.stuckCar.stuck=false;state.stuckCar.waiting=false;state.stuckCar=null;state.radioActive=false;
-      notify('✅ Диспетчер помог','');
-      soundSuccess();
-    },2500);
-    closePanel('radioPanel');
-  }else{
-    notify('📻 Диспетчер: «На линии всё спокойно»','');
-    closePanel('radioPanel');
-  }
+function endGame(win){
+  S.running=false;
+  $('endScreen').classList.add('show');
+  const rank=win?(S.errors===0?'🏆':S.errors<=1?'🥈':'🥉'):'💥';
+  $('endRank').textContent=rank;
+  $('endTitle').textContent=win?'Смена окончена!':'Смена провалена';
+  $('endScore').textContent='Очки: '+S.totalScore+' · Ошибок: '+S.errors+' · Пропущено: '+S.trainCount;
+  $('endSub').textContent=win?(S.errors===0?'Идеально! Ты — ДСП года.':'Хорошая смена.'):'Не хватило жизней.';
 }
 
-// ==================== РЕНДЕР ====================
+// ========== РЕНДЕР ==========
 function render(){
-  CTX.clearRect(0,0,CANVAS.width,CANVAS.height);
-  CTX.save();
-  CTX.translate(-state.camera.x,-state.camera.y);
-
-  const w=state.world;
-  // небо
-  CTX.fillStyle='#87ceeb';
-  CTX.fillRect(0,0,w.worldW,220);
-  // трава
-  CTX.fillStyle='#2a5a38';
-  CTX.fillRect(0,220,w.worldW,w.worldH-220);
-
-  // будка
-  drawBuilding(w.topBuildingX,w.topBuildingY,w.topBuildingW,w.topBuildingH);
-  drawBottomFloor(w.topBuildingX,w.bottomY,w.topBuildingW,w.bottomH);
-
-  // рельсы
-  CTX.fillStyle='#5a4a3a';
-  CTX.fillRect(0,w.railY-6,w.worldW,4);
-  CTX.fillRect(0,w.railY+8,w.worldW,4);
-  // шпалы
-  CTX.fillStyle='#3a2a1a';
-  for(let x=0;x<w.worldW;x+=30){CTX.fillRect(x,w.railY-8,8,20)}
-  // поезда
-  state.trains.forEach(t=>drawTrain(t));
-
-  // дорога
-  CTX.fillStyle='#3a3a3a';
-  CTX.fillRect(0,w.roadY-40,w.worldW,80);
-  CTX.fillStyle='#ffeb3b';
-  for(let x=0;x<w.worldW;x+=80){CTX.fillRect(x,w.roadY-3,40,4)}
-  // шлагбаум
-  drawBarrier();
-  // машины
-  state.cars.forEach(c=>drawCar(c));
-
-  // игрок
-  drawPlayer();
-
-  CTX.restore();
+  CX.clearRect(0,0,CV.width,CV.height);
+  // Небо
+  CX.fillStyle='#87ceeb';
+  CX.fillRect(0,0,CV.width,260);
+  // Облака
+  CX.fillStyle='#ffffff';
+  CX.globalAlpha=0.7;
+  for(let i=0;i<4;i++){
+    const cx=((Date.now()/60+i*400)%(CV.width+300))-150;
+    CX.beginPath();
+    CX.arc(cx,60+i*20,30,0,Math.PI*2);
+    CX.arc(cx+30,60+i*20,38,0,Math.PI*2);
+    CX.arc(cx+65,60+i*20,28,0,Math.PI*2);
+    CX.fill();
+  }
+  CX.globalAlpha=1;
+  // Трава
+  CX.fillStyle='#2a5a38';
+  CX.fillRect(0,240,CV.width,S.railY-240);
+  // Гравий под путями
+  CX.fillStyle='#6a5a4a';
+  CX.fillRect(0,S.railY-14,CV.width,60);
+  // Рельсы
+  CX.fillStyle='#8a8a92';
+  CX.fillRect(0,S.railY-4,CV.width,3);
+  CX.fillRect(0,S.railY+14,CV.width,3);
+  // Шпалы
+  CX.fillStyle='#3a2a1a';
+  for(let x=-((Date.now()/20)%30);x<CV.width;x+=30)CX.fillRect(x,S.railY-6,10,24);
+  // Дорога
+  CX.fillStyle='#3a3a3a';
+  CX.fillRect(0,S.roadY-40,CV.width,80);
+  CX.fillStyle='#ffeb3b';
+  for(let x=-((Date.now()/10)%80);x<CV.width;x+=80)CX.fillRect(x,S.roadY-3,42,5);
+  // Будка
+  drawBooth(60,S.railY-260);
+  // Шлагбаумы
+  drawBarrier(700);
+  drawBarrier(920);
+  // Светофоры (по обе стороны)
+  drawSignal(660,S.railY-60);
+  drawSignal(960,S.railY-60);
+  // Поезда
+  S.trains.forEach(tr=>drawTrain(tr));
+  // Машины
+  S.cars.forEach(c=>drawCar(c));
+  // Индикатор выбранного инструмента рядом с курсором/центром
+  if(S.selected){
+    CX.fillStyle='rgba(74,222,128,.85)';
+    CX.font='bold 14px Onest';
+    CX.textAlign='center';
+    CX.fillText(S.selected==='red'?'🔴 Красный флаг выбран':'🟡 Жёлтый флаг выбран',CV.width/2,CV.height-160);
+  }
 }
 
-function drawBuilding(x,y,w,h){
-  // стены
-  CTX.fillStyle='#8b6f47';
-  CTX.fillRect(x,y,w,h);
-  // крыша
-  CTX.fillStyle='#5a3a1a';
-  CTX.beginPath();
-  CTX.moveTo(x-20,y);
-  CTX.lineTo(x+w/2,y-50);
-  CTX.lineTo(x+w+20,y);
-  CTX.closePath();
-  CTX.fill();
-  // окна
-  CTX.fillStyle='#a8e6ff';
-  CTX.fillRect(x+30,y+40,60,60);
-  CTX.fillRect(x+w-90,y+40,60,60);
-  CTX.fillRect(x+30,y+120,60,60);
-  CTX.fillRect(x+w-90,y+120,60,60);
-  // дверь
-  CTX.fillStyle='#3a2a1a';
-  CTX.fillRect(x+w/2-25,y+h-80,50,80);
-  // ящик
-  CTX.fillStyle='#d97706';
-  CTX.fillRect(x+w/2-30,y+h-140,60,40);
-  CTX.fillStyle='#000';
-  CTX.font='bold 20px Onest,sans-serif';
-  CTX.textAlign='center';
-  CTX.fillText('📦',x+w/2,y+h-115);
+function drawBooth(x,y){
+  // Нижний этаж (опоры + пол)
+  CX.fillStyle='#6b4f37';
+  CX.fillRect(x+10,y+130,10,80);
+  CX.fillRect(x+150,y+130,10,80);
+  CX.fillStyle='#8b6f47';
+  CX.fillRect(x,y+120,170,20);
+  // Верхний этаж
+  CX.fillStyle='#c9a878';
+  CX.fillRect(x,y,170,120);
+  // Крыша
+  CX.fillStyle='#5a3a1a';
+  CX.beginPath();
+  CX.moveTo(x-15,y);
+  CX.lineTo(x+85,y-35);
+  CX.lineTo(x+185,y);
+  CX.closePath();
+  CX.fill();
+  // Окна
+  CX.fillStyle='#a8e6ff';
+  CX.fillRect(x+15,y+25,55,50);
+  CX.fillRect(x+100,y+25,55,50);
+  // Дверь
+  CX.fillStyle='#3a2a1a';
+  CX.fillRect(x+70,y+70,30,50);
+  // Ящик на балконе (пульт)
+  CX.fillStyle='#d97706';
+  CX.fillRect(x+55,y+92,60,28);
+  CX.fillStyle='#000';
+  CX.font='bold 16px Onest';
+  CX.textAlign='center';
+  CX.fillText('📦',x+85,y+112);
+  // Лестница
+  CX.fillStyle='#a88a5a';
+  for(let i=0;i<6;i++)CX.fillRect(x+130,y+130+i*13,30,7);
 }
 
-function drawBottomFloor(x,y,w,h){
-  // столбы
-  CTX.fillStyle='#5a3a1a';
-  CTX.fillRect(x,y-10,20,h+10);
-  CTX.fillRect(x+w-20,y-10,20,h+10);
-  CTX.fillRect(x+w/2-10,y-10,20,h+10);
-  // перекрытие
-  CTX.fillStyle='#8b6f47';
-  CTX.fillRect(x-10,y-10,w+20,20);
-  // пол
-  CTX.fillStyle='#6b4f37';
-  CTX.fillRect(x,y+h-10,w,20);
-  // лестница
-  CTX.fillStyle='#a88a5a';
-  for(let i=0;i<8;i++){CTX.fillRect(x+w-100,y+i*12,80,8)}
+function drawBarrier(x){
+  // Столб
+  CX.fillStyle='#c0c0c0';
+  CX.fillRect(x-4,S.railY-80,8,60);
+  // Стрела
+  CX.save();
+  CX.translate(x,S.railY-80);
+  CX.rotate(S.barrierClosed?0:-Math.PI/2.2);
+  CX.fillStyle='#ff0000';
+  CX.fillRect(0,-5,80,10);
+  CX.fillStyle='#ffffff';
+  CX.fillRect(15,-5,20,10);
+  CX.fillRect(55,-5,20,10);
+  CX.restore();
 }
 
-function drawBarrier(){
-  const w=state.world;
-  const x=w.topBuildingX+w.topBuildingW/2;
-  const y1=w.railY-40;
-  // столб
-  CTX.fillStyle='#c0c0c0';
-  CTX.fillRect(x-5,y1-60,10,80);
-  // стрела
-  CTX.save();
-  CTX.translate(x,y1-60);
-  CTX.rotate(state.barrierClosed?0:-Math.PI/2.2);
-  CTX.fillStyle='#ff0000';
-  CTX.fillRect(0,-4,90,8);
-  CTX.fillStyle='#fff';
-  CTX.fillRect(20,-4,20,8);
-  CTX.fillRect(60,-4,20,8);
-  CTX.restore();
-  // второй шлагбаум (напротив)
-  CTX.save();
-  CTX.translate(x+150,y1-60);
-  CTX.rotate(state.barrierClosed?0:-Math.PI/2.2);
-  CTX.fillStyle='#ff0000';
-  CTX.fillRect(0,-4,90,8);
-  CTX.fillStyle='#fff';
-  CTX.fillRect(20,-4,20,8);
-  CTX.fillRect(60,-4,20,8);
-  CTX.restore();
-  // светофор
-  CTX.fillStyle='#222';
-  CTX.fillRect(x-40,y1-120,20,50);
-  CTX.fillStyle=state.signalOn?'#ff0000':'#333';
-  CTX.beginPath();CTX.arc(x-30,y1-110,7,0,Math.PI*2);CTX.fill();
-  CTX.fillStyle=state.signalOn?'#ffff00':'#333';
-  CTX.beginPath();CTX.arc(x-30,y1-95,7,0,Math.PI*2);CTX.fill();
-  CTX.fillStyle='#22c55e';
-  CTX.beginPath();CTX.arc(x-30,y1-80,7,0,Math.PI*2);CTX.fill();
+function drawSignal(x,y){
+  // Столб
+  CX.fillStyle='#222';
+  CX.fillRect(x-3,y,6,50);
+  // Голова светофора
+  CX.fillStyle='#1a1a1a';
+  CX.fillRect(x-12,y-45,24,48);
+  // Красный
+  CX.fillStyle=S.signalRed?'#ff2a2a':'#331010';
+  CX.beginPath();CX.arc(x,y-32,7,0,Math.PI*2);CX.fill();
+  if(S.signalRed){CX.fillStyle='rgba(255,42,42,.3)';CX.beginPath();CX.arc(x,y-32,14,0,Math.PI*2);CX.fill()}
+  // Зелёный
+  CX.fillStyle=!S.signalRed?'#22c55e':'#10331a';
+  CX.beginPath();CX.arc(x,y-12,7,0,Math.PI*2);CX.fill();
+  if(!S.signalRed){CX.fillStyle='rgba(34,197,94,.3)';CX.beginPath();CX.arc(x,y-12,14,0,Math.PI*2);CX.fill()}
+  // АПС — звонок
+  if(S.apsOn){
+    CX.fillStyle='#fbbf24';
+    CX.font='bold 20px Onest';
+    CX.textAlign='center';
+    CX.fillText('🔔',x,y-60+Math.sin(Date.now()/200)*2);
+  }
 }
 
-function drawTrain(t){
-  CTX.save();
-  CTX.translate(t.x,t.y);
-  // вагон
-  CTX.fillStyle='#16a34a';
-  CTX.fillRect(0,-30,200,40);
-  CTX.fillStyle='#0a3d24';
-  CTX.fillRect(0,-30,200,10);
-  // окна
-  CTX.fillStyle='#a8e6ff';
-  for(let i=0;i<5;i++){CTX.fillRect(20+i*35,-18,25,15)}
-  // кабина
-  CTX.fillStyle='#15803d';
-  CTX.fillRect(0,-35,50,50);
-  CTX.fillStyle='#a8e6ff';
-  CTX.fillRect(10,-25,30,15);
-  // номер
-  CTX.fillStyle='#fff';
-  CTX.font='bold 12px Onest,sans-serif';
-  CTX.textAlign='left';
-  CTX.fillText(t.num,10,10);
-  // если задержка
-  if(t.delay>0){CTX.fillStyle='#fbbf24';CTX.fillText('+'+t.delay+'м',10,25)}
-  CTX.restore();
+function drawTrain(tr){
+  const cars=tr.cars;
+  cars.forEach(c=>{
+    drawCar_(c);
+  });
+  // Табличка с номером впереди поезда (у первого вагона)
+  if(cars.length>0){
+    const head=cars[0];
+    CX.fillStyle='rgba(0,0,0,.75)';
+    CX.fillRect(head.x-20,head.x+20,90,20);
+    // (переопределяем — рисуем над головным)
+  }
+  // Инфо над поездом
+  if(cars.length>0){
+    const first=cars[0];
+    CX.fillStyle='rgba(0,0,0,.7)';
+    CX.fillRect(first.x,S.railY-90,140,22);
+    CX.fillStyle='#fff';
+    CX.font='bold 12px Onest';
+    CX.textAlign='left';
+    CX.fillText(tr.num+' · '+tr.type.name,first.x+6,S.railY-75);
+  }
+}
+
+function drawCar_(c){
+  const y=S.railY;
+  if(c.kind==='loco'){
+    // Локомотив: основная часть + кабина + крыша
+    CX.fillStyle=c.color;
+    CX.fillRect(c.x,y-38,c.len,52);
+    // Крыша
+    CX.fillStyle='#1a1a2a';
+    CX.fillRect(c.x,y-46,c.len,10);
+    // Кабина (справа, если едет влево — головной справа)
+    CX.fillStyle=c.color;
+    CX.fillRect(c.x+c.len-22,y-52,22,64);
+    // Окно кабины
+    CX.fillStyle='#a8e6ff';
+    CX.fillRect(c.x+c.len-16,y-44,12,14);
+    // Фары
+    CX.fillStyle='#ffe066';
+    CX.beginPath();CX.arc(c.x+c.len-6,y-30,3,0,Math.PI*2);CX.fill();
+    CX.beginPath();CX.arc(c.x+c.len-6,y-12,3,0,Math.PI*2);CX.fill();
+    // Полосы
+    CX.fillStyle='#f5f5f5';
+    CX.fillRect(c.x,y-30,c.len-22,5);
+    // Тележки
+    CX.fillStyle='#111';
+    CX.fillRect(c.x+8,y+12,16,8);
+    CX.fillRect(c.x+c.len-26,y+12,16,8);
+    // Колёса
+    CX.fillStyle='#000';
+    CX.beginPath();CX.arc(c.x+16,y+22,5,0,Math.PI*2);CX.fill();
+    CX.beginPath();CX.arc(c.x+c.len-18,y+22,5,0,Math.PI*2);CX.fill();
+  }else if(c.kind==='wagon'){
+    // Пассажирский вагон
+    CX.fillStyle=c.color;
+    CX.fillRect(c.x,y-36,c.len,48);
+    // Крыша
+    CX.fillStyle='#222';
+    CX.fillRect(c.x,y-44,c.len,10);
+    // Окна
+    CX.fillStyle='#a8e6ff';
+    for(let i=0;i<6;i++)CX.fillRect(c.x+8+i*13,y-28,9,14);
+    // Полоса
+    CX.fillStyle=c.accent||'#fff';
+    CX.fillRect(c.x,y-6,c.len,4);
+    // Тележки
+    CX.fillStyle='#111';
+    CX.fillRect(c.x+8,y+12,14,8);
+    CX.fillRect(c.x+c.len-22,y+12,14,8);
+    CX.fillStyle='#000';
+    CX.beginPath();CX.arc(c.x+15,y+22,4,0,Math.PI*2);CX.fill();
+    CX.beginPath();CX.arc(c.x+c.len-15,y+22,4,0,Math.PI*2);CX.fill();
+  }else if(c.kind==='cargo'){
+    // Грузовой вагон (полувагон/цистерна)
+    CX.fillStyle=c.color;
+    CX.fillRect(c.x,y-34,c.len,44);
+    CX.fillStyle='#1a1a1a';
+    CX.fillRect(c.x,y-42,c.len,8);
+    // Горизонтальные рёбра
+    CX.fillStyle='rgba(0,0,0,.35)';
+    for(let i=1;i<5;i++)CX.fillRect(c.x+i*(c.len/5),y-30,2,38);
+    // Тележки
+    CX.fillStyle='#111';
+    CX.fillRect(c.x+8,y+12,14,8);
+    CX.fillRect(c.x+c.len-22,y+12,14,8);
+    CX.fillStyle='#000';
+    CX.beginPath();CX.arc(c.x+15,y+22,4,0,Math.PI*2);CX.fill();
+    CX.beginPath();CX.arc(c.x+c.len-15,y+22,4,0,Math.PI*2);CX.fill();
+  }else if(c.kind==='emu'){
+    // Вагон электрички
+    CX.fillStyle=c.color;
+    CX.fillRect(c.x,y-34,c.len,46);
+    // Крыша
+    CX.fillStyle='#222';
+    CX.fillRect(c.x,y-42,c.len,10);
+    // Головной — со «стеклом» впереди (слева, если едет влево)
+    if(c.head){
+      CX.fillStyle='#a8e6ff';
+      CX.fillRect(c.x+2,y-30,8,28);
+    }
+    if(c.tail){
+      CX.fillStyle='#a8e6ff';
+      CX.fillRect(c.x+c.len-10,y-30,8,28);
+    }
+    // Окна
+    CX.fillStyle='#a8e6ff';
+    const winCount=5;
+    for(let i=0;i<winCount;i++){
+      const wx=c.x+14+i*15;
+      if(wx+10<c.x+c.len-14)CX.fillRect(wx,y-26,10,16);
+    }
+    // Двери (тёмные полосы)
+    CX.fillStyle=c.accent||'#0a3d24';
+    CX.fillRect(c.x+10,y-30,3,42);
+    CX.fillRect(c.x+c.len-13,y-30,3,42);
+    // Полоса по низу
+    CX.fillStyle=c.accent||'#0a3d24';
+    CX.fillRect(c.x,y-4,c.len,4);
+    // Тележки
+    CX.fillStyle='#111';
+    CX.fillRect(c.x+8,y+12,14,8);
+    CX.fillRect(c.x+c.len-22,y+12,14,8);
+    CX.fillStyle='#000';
+    CX.beginPath();CX.arc(c.x+15,y+22,4,0,Math.PI*2);CX.fill();
+    CX.beginPath();CX.arc(c.x+c.len-15,y+22,4,0,Math.PI*2);CX.fill();
+  }
 }
 
 function drawCar(c){
-  CTX.save();
-  CTX.translate(c.x,c.y);
-  CTX.fillStyle=c.stuck?'#ef4444':(c.waiting?'#f59e0b':'#3b82f6');
-  CTX.fillRect(-30,-20,60,35);
-  CTX.fillStyle='#1e3a8a';
-  CTX.fillRect(-22,-15,20,12);
-  CTX.fillRect(2,-15,20,12);
-  CTX.fillStyle='#222';
-  CTX.beginPath();CTX.arc(-18,18,7,0,Math.PI*2);CTX.fill();
-  CTX.beginPath();CTX.arc(18,18,7,0,Math.PI*2);CTX.fill();
-  CTX.restore();
-}
-
-function drawPlayer(){
-  const p=state.player;
-  CTX.save();
-  CTX.translate(p.x+p.w/2,p.y+p.h/2);
-  // тело
-  CTX.fillStyle='#1e40af';
-  CTX.fillRect(-p.w/2,-p.h/2+10,p.w,p.h-10);
-  // голова
-  CTX.fillStyle='#fbbf24';
-  CTX.beginPath();CTX.arc(0,-p.h/2+5,12,0,Math.PI*2);CTX.fill();
-  // флаг в руке
-  if(state.selectedItem==='red'){
-    CTX.fillStyle='#ef4444';
-    CTX.fillRect(p.w/2,-10,20,12);
-  }else if(state.selectedItem==='yellow'){
-    CTX.fillStyle='#fbbf24';
-    CTX.fillRect(p.w/2,-10,20,12);
+  const x=c.x,y=c.y;
+  // Кузов
+  CX.fillStyle=c.stuck?'#ef4444':(c.waiting?'#f59e0b':'#3b82f6');
+  CX.fillRect(x-28,y-18,56,32);
+  // Крыша
+  CX.fillStyle='#1e3a8a';
+  CX.fillRect(x-22,y-24,44,8);
+  // Стёкла
+  CX.fillStyle='#a8e6ff';
+  CX.fillRect(x-20,y-12,18,10);
+  CX.fillRect(x+2,y-12,18,10);
+  // Колёса
+  CX.fillStyle='#000';
+  CX.beginPath();CX.arc(x-16,y+16,6,0,Math.PI*2);CX.fill();
+  CX.beginPath();CX.arc(x+16,y+16,6,0,Math.PI*2);CX.fill();
+  // Бибикалка
+  if(c.waiting&&!c.stuck){
+    CX.fillStyle='#ffeb3b';
+    CX.font='bold 14px Onest';
+    CX.textAlign='center';
+    CX.fillText('💨',x,y-32);
   }
-  CTX.restore();
+  if(c.stuck){
+    CX.fillStyle='#fff';
+    CX.font='bold 12px Onest';
+    CX.textAlign='center';
+    CX.fillText('⚠',x,y-32);
+  }
 }
 
-// ==================== УПРАВЛЕНИЕ ====================
-document.addEventListener('keydown',e=>{state.keys[e.key]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault()});
-document.addEventListener('keyup',e=>{state.keys[e.key]=false});
-document.querySelectorAll('.touch-btn[data-key]').forEach(btn=>{
-  const k=btn.dataset.key;
-  btn.addEventListener('touchstart',e=>{e.preventDefault();state.keys[k]=true},{passive:false});
-  btn.addEventListener('touchend',e=>{e.preventDefault();state.keys[k]=false},{passive:false});
-  btn.addEventListener('mousedown',()=>{state.keys[k]=true});
-  btn.addEventListener('mouseup',()=>{state.keys[k]=false});
-  btn.addEventListener('mouseleave',()=>{state.keys[k]=false});
+// ========== ТАП ПО БУДКЕ → ПУЛЬТ ==========
+CV.addEventListener('click',e=>{
+  if(!S.running)return;
+  const x=e.clientX,y=e.clientY;
+  // Будка — прямоугольник x=60..230, y=S.railY-260..S.railY-40
+  const bx=60,by=S.railY-260;
+  if(x>=bx&&x<=bx+180&&y>=by&&y<=by+200){
+    openPanel('panelBox');
+    return;
+  }
+  // Если выбран флаг — тап по машине рядом
+  if(S.selected==='red'&&S.stuckCar){
+    const c=S.stuckCar;
+    if(Math.abs(x-c.x)<60&&Math.abs(y-c.y)<60){
+      notify('🚩 Машину выталкивают…','warn');
+      setTimeout(()=>{
+        if(S.stuckCar){S.stuckCar.stuck=false;S.stuckCar.waiting=false;S.stuckCar=null}
+        notify('✅ Машина убрана','ok');
+        sOK();
+      },1500);
+    }
+  }
 });
+
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
+resize();
+updateHud();
 </script>
 </body>
 </html>
